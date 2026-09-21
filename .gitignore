@@ -1,0 +1,12 @@
+node_modules
+.next
+out
+dist
+.env
+.env.local
+.DS_Store
+data/*.json
+data/uploads/*
+!data/uploads/.gitkeep
+*.log
+tsconfig.tsbuildinfo

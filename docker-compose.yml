@@ -1,0 +1,17 @@
+services:
+  omnipost:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      TZ: Asia/Shanghai
+      HOSTNAME: 0.0.0.0
+      PORT: "3000"
+      OMNIPOST_DRY_RUN: ${OMNIPOST_DRY_RUN:-true}
+      OMNIPOST_BASE_URL: ${OMNIPOST_BASE_URL:-http://localhost:3000}
+    volumes:
+      - omnipost-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  omnipost-data:
