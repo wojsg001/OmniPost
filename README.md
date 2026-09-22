@@ -1,6 +1,6 @@
 # OmniPost
 
-一次写稿，按中国互联网高峰发到微博、公众号、小红书和 X / Facebook / Instagram。支持绑定账号、Docker、获客和接大模型写脚本 / 生图。
+一次写稿，按中国互联网高峰发到微博、公众号、小红书和 X / Facebook / Instagram。面向中小企业主：手机上也能审批、跟线索、管达人。规格见 `specs/`，agent 分工见 `AGENTS.md`。
 
 ## 启动
 

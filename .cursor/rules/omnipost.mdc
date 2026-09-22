@@ -1,0 +1,14 @@
+---
+description: OmniPost 产品方向与 agent 分工，写任何功能前先对照 spec
+alwaysApply: true
+---
+
+# OmniPost
+
+中小企业自媒体 / 达人 / 获客。企业主随时随地用手机处理，不是电脑专用工具。
+
+- 先读 `specs/product.md` 和 `specs/surfaces.md`
+- 按 `AGENTS.md` 把活派给 `.cursor/agents/` 里的角色
+- 企业主路径：React Native（Expo）；运营工作台：Next.js 必须能在手机用；`/admin` 本机 Docker 即可
+- 不要引入 Electron 或 Flutter
+- 数据按企业（租户）隔离；不要把密钥写进仓库

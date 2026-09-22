@@ -157,6 +157,81 @@ export interface OAuthPending {
   createdAt: string;
 }
 
+export type UserRole = "super_admin" | "tenant_admin" | "operator" | "viewer";
+
+export type TenantPlan = "starter" | "pro" | "agency";
+
+export type TenantStatus = "active" | "paused";
+
+export type KolStatus = "prospect" | "cooperating" | "paused" | "ended";
+
+export type KolDealStatus = "talking" | "confirmed" | "producing" | "published" | "settled" | "cancelled";
+
+export interface Tenant {
+  id: string;
+  name: string;
+  slug: string;
+  plan: TenantPlan;
+  status: TenantStatus;
+  contactName: string;
+  contactWechat: string;
+  createdAt: string;
+}
+
+export interface AuthUser {
+  id: string;
+  tenantId: string;
+  email: string;
+  name: string;
+  role: UserRole;
+}
+
+export interface KolChannel {
+  platform: string;
+  handle: string;
+  followers: number;
+}
+
+export interface Kol {
+  id: string;
+  name: string;
+  platforms: KolChannel[];
+  category: string;
+  city: string;
+  contact: string;
+  wechat: string;
+  quotePrice: number | null;
+  status: KolStatus;
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface KolDeal {
+  id: string;
+  kolId: string;
+  title: string;
+  fee: number | null;
+  startAt: string | null;
+  endAt: string | null;
+  deliverable: string;
+  resultUrl: string;
+  status: KolDealStatus;
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AuditLog {
+  id: string;
+  tenantId: string | null;
+  userId: string | null;
+  action: string;
+  target: string;
+  detail: Record<string, unknown>;
+  createdAt: string;
+}
+
 export interface Store {
   settings: AppSettings;
   accounts: Account[];
