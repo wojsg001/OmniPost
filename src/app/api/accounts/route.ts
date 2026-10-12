@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { mutateStore } from "@/lib/db";
 import { isDryRun } from "@/lib/platforms/base";
-import { BIND_SPECS } from "@/lib/platforms/bind";
+import { BIND_SPECS, callbackUrl } from "@/lib/platforms/bind";
 import { isBound, publicCredentials } from "@/lib/platforms/credentials";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +18,7 @@ export async function GET() {
       docs: BIND_SPECS[account.platform].docs,
       oauthHint: BIND_SPECS[account.platform].oauthHint,
       fields: BIND_SPECS[account.platform].fields,
+      callback: BIND_SPECS[account.platform].oauth ? callbackUrl(account.platform) : null,
     })),
   });
 }
@@ -47,6 +48,7 @@ export async function POST() {
       docs: BIND_SPECS[account.platform].docs,
       oauthHint: BIND_SPECS[account.platform].oauthHint,
       fields: BIND_SPECS[account.platform].fields,
+      callback: BIND_SPECS[account.platform].oauth ? callbackUrl(account.platform) : null,
     })),
   });
 }

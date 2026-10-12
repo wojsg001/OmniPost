@@ -19,7 +19,14 @@ type AccountCard = Account & {
   docs: string;
   oauthHint: string;
   fields: BindField[];
+  callback: string | null;
 };
+
+interface OAuthChoiceCard {
+  id: string;
+  label: string;
+  detail: string;
+}
 
 export default function PlatformsPage() {
   const [accounts, setAccounts] = useState<AccountCard[]>([]);
@@ -28,6 +35,9 @@ export default function PlatformsPage() {
   const [open, setOpen] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, Record<string, string>>>({});
   const [busy, setBusy] = useState("");
+  const [pick, setPick] = useState<string | null>(null);
+  const [choices, setChoices] = useState<OAuthChoiceCard[]>([]);
+  const [tone, setTone] = useState<"ok" | "err">("ok");
 
   async function load() {
     const data = await fetch("/api/accounts").then((r) => r.json());
@@ -45,11 +55,31 @@ export default function PlatformsPage() {
 
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
-    if (q.get("bound")) {
-      setOpen(q.get("bound"));
-      setMessage(`已绑定 ${q.get("bound")}`);
+    const bound = q.get("bound");
+    const picked = q.get("pick");
+    if (bound) {
+      setOpen(bound);
+      setTone("ok");
+      setMessage(`已通过授权登录绑定 ${PLATFORM_SPECS[bound as keyof typeof PLATFORM_SPECS]?.name || bound}`);
     }
-    if (q.get("error")) setMessage(q.get("error") || "");
+    if (q.get("error")) {
+      setTone("err");
+      setMessage(q.get("error") || "");
+    }
+    if (picked) {
+      setPick(picked);
+      setOpen(picked);
+      void fetch(`/api/oauth/${picked}/choose`)
+        .then((r) => r.json())
+        .then((data) => {
+          const next = (data.choices || []) as OAuthChoiceCard[];
+          setChoices(next);
+          if (!next.length) {
+            setTone("err");
+            setMessage("没有可选账号，请重新授权登录");
+          }
+        });
+    }
     void load();
   }, []);
 
@@ -66,17 +96,55 @@ export default function PlatformsPage() {
     }).then((r) => r.json());
     setBusy("");
     if (data.error) {
+      setTone("err");
       setMessage("保存失败");
       return;
     }
-    setMessage("凭证已写入，可点授权或直接发帖");
+    setTone("ok");
+    setMessage("凭证已写入，可点授权登录");
     await load();
+  }
+
+  async function startOAuth(platform: string) {
+    setBusy(platform);
+    const draft = drafts[platform] || {};
+    const { displayName, ...credentials } = draft;
+    const data = await fetch(`/api/accounts/${platform}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ displayName, credentials }),
+    }).then((r) => r.json());
+    if (data.error) {
+      setBusy("");
+      setTone("err");
+      setMessage("请先填写应用的 App ID / Secret，再授权登录");
+      setOpen(platform);
+      return;
+    }
+    window.location.href = `/api/oauth/${platform}`;
+  }
+
+  async function chooseAccount(platform: string, id: string) {
+    setBusy(platform);
+    const data = await fetch(`/api/oauth/${platform}/choose`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    }).then((r) => r.json());
+    setBusy("");
+    if (data.error) {
+      setTone("err");
+      setMessage(data.error);
+      return;
+    }
+    window.location.href = `/platforms?bound=${platform}`;
   }
 
   async function unbind(platform: string) {
     setBusy(platform);
     await fetch(`/api/accounts/${platform}`, { method: "DELETE" });
     setBusy("");
+    setTone("ok");
     setMessage("已解绑");
     await load();
   }
@@ -96,13 +164,12 @@ export default function PlatformsPage() {
           <p className="text-xs uppercase tracking-[0.2em] text-paper-500">Accounts</p>
           <h1 className="mt-1 font-display text-4xl">绑定发帖账号</h1>
           <p className="mt-2 max-w-2xl text-sm text-paper-400">
-            微博 / X / Facebook / Instagram 支持网页授权；公众号和小红书粘贴开放平台凭证。Docker 部署时请把回调地址设为
-            <code className="mx-1 text-gold">OMNIPOST_BASE_URL</code>。
+            X、Facebook、Instagram 点「授权登录」跳转到对应平台。先保存应用的 Client ID / App ID，并把回调地址加进开发者后台。公众号和小红书仍粘贴凭证。
           </p>
         </div>
         <p className="chip">已绑定 {connected}/6 · {dryRun ? "模拟发布" : "真实发帖"}</p>
       </div>
-      {message && <p className="text-sm text-moss">{message}</p>}
+      {message && <p className={`text-sm ${tone === "err" ? "text-flame-400" : "text-moss"}`}>{message}</p>}
       <div className="grid gap-3 lg:grid-cols-2">
         {accounts.map((account) => {
           const spec = PLATFORM_SPECS[account.platform];
@@ -129,9 +196,13 @@ export default function PlatformsPage() {
                   {expanded ? "收起" : "绑定 / 改凭证"}
                 </button>
                 {account.oauth && (
-                  <a className="chip border-flame-500/50 text-flame-400" href={`/api/oauth/${account.platform}`}>
+                  <button
+                    className="chip border-flame-500/50 text-flame-400"
+                    disabled={busy === account.platform}
+                    onClick={() => void startOAuth(account.platform)}
+                  >
                     授权登录
-                  </a>
+                  </button>
                 )}
                 <a className="chip" href={account.docs} target="_blank" rel="noreferrer">
                   开放平台
@@ -145,6 +216,30 @@ export default function PlatformsPage() {
               {expanded && (
                 <div className="mt-4 space-y-3 border-t border-ink-700 pt-4">
                   <p className="text-xs text-paper-500">{account.oauthHint}</p>
+                  {account.callback && (
+                    <p className="break-all text-xs text-paper-400">
+                      回调地址
+                      <code className="mt-1 block rounded-lg bg-ink-900 px-2 py-1 text-gold">{account.callback}</code>
+                    </p>
+                  )}
+                  {pick === account.platform && choices.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-sm text-paper-50">
+                        {account.platform === "instagram" ? "选择要绑定的 Instagram 专业账号" : "选择要绑定的 Facebook 主页"}
+                      </p>
+                      {choices.map((choice) => (
+                        <button
+                          key={choice.id}
+                          disabled={busy === account.platform}
+                          onClick={() => void chooseAccount(account.platform, choice.id)}
+                          className="block w-full rounded-xl border border-ink-700 px-3 py-3 text-left text-sm disabled:opacity-50"
+                        >
+                          <span className="text-paper-50">{choice.label}</span>
+                          {choice.detail && <span className="mt-1 block text-xs text-paper-500">{choice.detail}</span>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   {account.fields.map((field) => (
                     <label key={field.key} className="block text-xs text-paper-500">
                       {field.label}

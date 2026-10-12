@@ -150,11 +150,20 @@ export interface Lead {
   createdAt: string;
 }
 
+export interface OAuthChoice {
+  id: string;
+  name: string;
+  token: string;
+  username?: string;
+}
+
 export interface OAuthPending {
   state: string;
   platform: PlatformId;
   verifier?: string;
   createdAt: string;
+  choices?: OAuthChoice[];
+  hint?: string;
 }
 
 export type UserRole = "super_admin" | "tenant_admin" | "operator" | "viewer";
